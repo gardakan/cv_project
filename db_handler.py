@@ -39,7 +39,7 @@ class Db(object):
     def readValue(self):
         c.execute("SELECT * FROM Accounts_CV;")
         self.rows = c.fetchall()
-        print("\nDatabse ID; Date in month and year (default = todays date); Account name; Current balance:\n")
+        print("\nDatabse ID; Date in month and year (default = todays date); Account name; Current balance; Default currency\n")
         for row in self.rows:
             row = str(row)                          # Convert to string
             row = re.sub('[\(\"\[\'\]\)]', '', row) # Remove special characters from result
@@ -50,8 +50,9 @@ class Db(object):
         self.a = current_date
         self.b = input("Please enter account name: ")
         self.c = input("Please enter account balance: ")
-        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?);"
-        c.execute(self.sql, (str(self.a), self.b, self.c))
+        self.d = input("Please enter default currency: ")
+        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?);"
+        c.execute(self.sql, (str(self.a), self.b, self.c, self.d))
         while True:
             self.commit = input("Would you like to save your data? ")
             if self.commit.upper() == 'Y' or self.commit.upper() == 'N':
@@ -79,6 +80,13 @@ class Db(object):
             else:
                 continue
 
+    def addColumn(self):
+        c.execute("ALTER TABLE Accounts_CV ADD COLUMN 'Total' REAL DEFAULT NULL;")
+
+    def getTotal(self):
+        c.execute("SELECT ID, EntryDate, AccountName, Balance, Currency, (SELECT SUM(Balance) FROM Accounts_CV) Total FROM Accounts_CV;")
+        self.total = c.fetchone()
+        print("\n\nTotal =",self.total[5],self.total[4],"\n")
             
     def editEntry(self):
         print("\n\n\nAccount details:\n")
@@ -111,7 +119,7 @@ class Db(object):
                 print(c.fetchone()[self.choices[self.fieldtoedit]])
                 self.edited = input("Please enter new value: ")
                 self.sql = "UPDATE Accounts_CV SET ?=? WHERE ID=?;"
-                c.execute(self.sql, self.chosen, self.edited, self.chooseAccount)
+                c.execute(self.sql, (self.chosen, self.edited, self.chooseAccount))
                 self.readValue()
                 break
             break
