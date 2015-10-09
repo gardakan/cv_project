@@ -1,4 +1,4 @@
-import db_handler       # Contains class Db with all the database functions
+import db_handler    # Contains class Db with all the database functions
 
 db = db_handler.Db()    # Class Db() now referenced as db
 

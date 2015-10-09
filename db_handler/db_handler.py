@@ -121,9 +121,9 @@ class Db(object):
                 self.gathered = c.fetchone()[self.choices[self.fieldtoedit]]
                 print(self.gathered)
                 self.edited = input("Please enter new value: ")
-                self.sql = "UPDATE Accounts_CV SET :one=? WHERE ID=?;"
-                c.execute(self.sql, ({one:self.chosen}, self.edited, self.chooseAccount,))
-                c.commit()
+                self.sql = "UPDATE Accounts_CV SET %s=? WHERE ID=?;" % (self.chosen)
+                c.execute(self.sql, (self.edited, self.chooseAccount,))
+                con.commit()
                 self.readValue()
                 break
             break
