@@ -6,7 +6,7 @@ import sys
 import datetime
 import re
 
-print(sys.version_info)
+# print(sys.version_info) # <-- used it once for diagnostic purposes, just leaving it in for now.
 
 con = lite.connect('account_cv.db') # Connect to database
 
@@ -20,7 +20,7 @@ month = date.month
 current_date = [month_list[month], year]
 
 
-
+# Main database handling class.
 class Db(object):
     def __init__(self):
         d = 1
@@ -31,7 +31,7 @@ class Db(object):
 
     def createTable(self):
         try:
-            c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL);")
+            c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL, Total REAL DEFAULT NULL);")
         except(lite.Error):
             pass                # Ignore table creation if it already exists.  Another (better) way might be to check if the table exists, if not, then create it.  But this works.
         c.execute("CREATE TABLE IF NOT EXISTS Currency(ID INTEGER PRIMARY KEY NOT NULL, Currency TEXT);") # This works better, and is apparently the proper way to do things.  This table will be referenced for currency conversions.
@@ -52,8 +52,10 @@ class Db(object):
         self.b = input("Please enter account name: ")
         self.c = input("Please enter account balance: ")
         self.d = input("Please enter default currency: ")
-        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?);"
+        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?, NULL);"
+        self.currency = "INSERT INTO Currency VALUES(NULL, ?);"
         c.execute(self.sql, (str(self.a), self.b, self.c, self.d))
+        c.execute(self.currency, (self.d,))
         while True:
             self.commit = input("Would you like to save your data? ")
             if self.commit.upper() == 'Y' or self.commit.upper() == 'N':
@@ -66,7 +68,7 @@ class Db(object):
     def deleteValue(self):
         self.sql = "DELETE FROM Accounts_CV WHERE ID=?;"
         self.x = input("Enter Account ID to delete: ")
-        c.execute(self.sql, (self.x))
+        c.execute(self.sql, (self.x,))
         con.commit()
         self.readValue()
 
@@ -81,7 +83,7 @@ class Db(object):
             else:
                 continue
 
-    def addColumn(self):    # Not going to be used...
+    def addColumn(self):    # Now added to the default table creation
         c.execute("ALTER TABLE Accounts_CV ADD COLUMN 'Total' REAL DEFAULT NULL;")
 
     def getTotal(self):
@@ -94,6 +96,8 @@ class Db(object):
         self.readValue()
         self.choices = {'1':2,'2':3,'3':1}
         self.columns = {1:'AccountName',2:'Balance',3:'EntryDate'}
+        self.editDate = []
+        self.monthValue = True
         while True:
             self.chooseAccount = input("\nPlease enter account ID to edit; type exit to cancel: \n")
             self.isEqual = False
@@ -120,7 +124,40 @@ class Db(object):
                 c.execute(self.fetch, (self.chooseAccount,))
                 self.gathered = c.fetchone()[self.choices[self.fieldtoedit]]
                 print(self.gathered)
-                self.edited = input("Please enter new value: ")
+                #
+                #
+                #  vvvv The bit below is the logic to get the formatting of the date correct vvvv
+                #
+                #
+                if self.chosen == 'EntryDate':
+                    for j in month_list:
+                        print(j, month_list[j])
+                    # Enter month and year, check for inconsistencies
+                    while self.monthValue == True:
+                        self.editDate.append(input("Please enter the numeric value of the month from 1-12: "))
+                        print(month_list[int(self.editDate[0])])
+                        for k in list(range(1,13)):
+                            # print(k)
+                            if int(k) == int(self.editDate[0]):
+                                self.monthValue = False
+                                self.editDate[0] = month_list[k]
+                                break
+                            else:
+                                continue
+                    while True:
+                        self.editDate.append(input("Please enter the 4-digit year: "))
+                        if len(list(str(self.editDate[1]))) == 4 and int(self.editDate[1]) <= year:
+                            break
+                        else:
+                            del self.editDate[-1]    # Remove appended 
+                            continue
+                    self.editDate = str(self.editDate)
+                    self.edited = re.sub('[\[\]\']','',self.editDate)
+                else:
+                    self.edited = input("Please enter new value: ")
+                #
+                # ^^^^ The above input is for all other data types besides date ^^^^
+                #
                 self.sql = "UPDATE Accounts_CV SET %s=? WHERE ID=?;" % (self.chosen)
                 c.execute(self.sql, (self.edited, self.chooseAccount,))
                 con.commit()
