@@ -5,6 +5,7 @@ import sqlite3 as lite      # Using sqlite for now, port to mysql for improved s
 import sys
 import datetime
 import re
+import requests
 
 # print(sys.version_info) # <-- used it once for diagnostic purposes, just leaving it in for now.
 
@@ -182,6 +183,67 @@ currencyList = {"AED":"United Arab Emirates Dirham",
                 "ZMW":"Zambia Kwacha",
                 "ZWD":"Zimbabwe Dollar"}
 
+# Currency conversion class
+class CurrencyFunctions(object):
+
+    def __init__(self):
+        pass
+
+    # Iterate over the available currencies (not all of which are supported, IndexError may be thrown).
+    def showCurrencies(self):
+        self.a = sorted(currencyList.keys())
+        print("Available currencies:")
+        for i in a:
+            print(i,currencyList[i])
+
+    # Method for entering currency by ISO 4217 standards.  Not all official standards are supported by the conversion API's, and IndexError is thrown in such cases.
+    def getCurrency(self):
+        self.x = input("Please enter ISO 4217 currency code for the amount to enter, or type 'list' to see a list of available choices: ")
+        if self.x.upper() == "LIST":
+            self.showCurrencies()
+            return self.getCurrency()
+        elif self.x.upper() in currencyList:
+            return self.x.upper()
+        else:
+            print("Invalid entry; ")
+            return self.getCurrency()
+
+    # Currency conversion method
+    def enterConvert(self, entered, converted, cValue):
+        self.entered = entered
+        self.converted = converted
+        self.cValue = cValue
+
+        self.url = ('https://currency-api.appspot.com/api/%s/%s.json') % (self.entered,self.converted)
+        print("Getting exchange rate for %s to %s from: %s." % (self.entered, self.converted, self.url))
+
+        r = requests.get(self.url)
+
+        print("Current exchange rate: ", r.json()['rate'])
+        print("Account value in %s: %f" % (self.entered, self.cValue*float(r.json()['rate'])))
+
+        try:   # Watch for exceptions
+            self.urlalt = ('http://themoneyconverter.com/%s/%s.aspx') % (self.entered,self.converted)
+            print("Secondary conversion rates from %s." % (self.urlalt))
+
+            # split and strip
+            self.split1 = ('>%s/%s =') % (self.converted, self.entered)
+            self.strip1 = ('</textarea>')
+
+            self.ralt = requests.get(self.urlalt)
+            self.d = float(self.ralt.text.split(self.split1)[1].split(self.strip1)[0].strip())
+            print("Current exchange rate: ", self.d)
+
+            print("Account value in %s: %f" % (self.entered, (self.cValue * self.d)))
+            return (self.cValue * self.d)
+        
+        except(IndexError):
+            print("Unsupported currency.  Please try again. ")
+            pass
+        
+        
+
+CFunc = CurrencyFunctions() # Instantiate the CurrencyFunctions class
 
 # Main database handling class.
 class Db(object):
@@ -189,17 +251,19 @@ class Db(object):
         d = 1
         self.con = con
         self.c = c
+        
         pass
 
-
+    # Create the tables if they don't already exist.
     def createTable(self):
         try:
             c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL, DefaultCurrency TEXT, Total REAL DEFAULT NULL);")
         except(lite.Error):
             pass                # Ignore table creation if it already exists.  Another (better) way might be to check if the table exists, if not, then create it.  But this works.
         c.execute("CREATE TABLE IF NOT EXISTS Currency(ID INTEGER, Currency TEXT);") # This works better, and is apparently the proper way to do things.  This table will be referenced for currency conversions.
+        c.execute("CREATE TABLE IF NOT EXISTS DateTime(ID INTEGER, EntryDate TEXT, Balance REAL);")
 
-
+    # Iterates over the Accounts_CV table and outputs all account info
     def readValue(self):
         c.execute("SELECT * FROM Accounts_CV;")
         self.rows = c.fetchall()
@@ -209,18 +273,17 @@ class Db(object):
             row = re.sub('[\(\"\[\'\]\)]', '', row) # Remove special characters from result
             print(row)
 
+    # Method for getting the primary key ID of an account.
     def writeToCurrencyDb(self, name):
         self.name = name
         self.sql = "SELECT ID FROM Accounts_CV WHERE AccountName=?;"
         c.execute(self.sql, (self.name,))
         self.result = str(c.fetchone())
         self.result = re.sub('[\(\)\,]', '', self.result)
-        print(self.result)
         self.result = int(float(self.result))
-        print(self.result)
         return self.result
-        
 
+    # Method for adding new accounts.
     def dataEntry(self):
         self.a = current_date
         self.b = input("Please enter account name: ")
@@ -231,21 +294,21 @@ class Db(object):
             if self.d in currencyList:
                 break
             else:
-                # print("Invalid entry.  Please enter the ISO 4217 currency code (three letter abbreviation)").
                 continue
         self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?, NULL);"
         c.execute(self.sql, (str(self.a), self.b, self.c, self.d))
-        c.execute("INSERT INTO Currency VALUES(?, ?);", (int(self.writeToCurrencyDb(self.b)), self.d))
+        c.execute("INSERT INTO Currency VALUES(?, ?);", (int(self.writeToCurrencyDb(self.b)), self.d)) # Store currency in separate table for conversion purposes
         while True:
             self.commit = input("Would you like to save your data? ")
             if self.commit.upper() == 'Y' or self.commit.upper() == 'N':
                 break
+            
         # Store default currency in Currency table.
         if self.commit.upper() == 'Y':
             con.commit()
         self.readValue()
 
-
+    # Method used by deleteRow, should ideally be combined into one method.  This method does the actual SQL deletion.
     def deleteValue(self):
         self.sql = "DELETE FROM Accounts_CV WHERE ID=?;"
         self.x = input("Enter Account ID to delete: ")
@@ -253,6 +316,7 @@ class Db(object):
         con.commit()
         self.readValue()
 
+    # Delete an account
     def deleteRow(self):
         while True:
             del_opt = input("Would you like to delete an entry (y/n)? ")
@@ -264,14 +328,38 @@ class Db(object):
             else:
                 continue
 
-    def addColumn(self):    # Now added to the default table creation
-        c.execute("ALTER TABLE Accounts_CV ADD COLUMN 'Total' REAL DEFAULT NULL;")
-
+    # Method to get the total balance of all accounts in given currency
     def getTotal(self):
-        c.execute("SELECT ID, EntryDate, AccountName, Balance, DefaultCurrency, (SELECT SUM(Balance) FROM Accounts_CV) Total FROM Accounts_CV;")
-        self.total = c.fetchone()
-        print("\n\nTotal =",self.total[5],self.total[4],"\n")
+        while True:
+            self.totalCurrency = input("Please enter the currency in which you would like the total to be displayed: ")
+            self.totalCurrency = self.totalCurrency.upper()
+            if self.totalCurrency in currencyList:
+                break
+            else:
+                print("Invalid entry.  Please enter the ISO 4217 currency code (three letter abbreviation).")
+                continue
+        c.execute("SELECT DefaultCurrency FROM Accounts_CV;")
+        self.currencies = c.fetchall()
+        self.totalList = []
+        self.cValue = []
+        for i in range(len(self.currencies)):
+            for rowVal in c.execute("SELECT Balance FROM Accounts_CV;"):
+                self.cValue.append(re.sub('[\(\)\,\']', '', str(rowVal)))
+            self.currencies[i] = re.sub('[\(\)\,\']', '', str(self.currencies[i]))
             
+            # Call on enterConvert
+            print("Converting from %s to %s with an account balance of %f. " % (self.currencies[i], self.totalCurrency, float(self.cValue[i])))
+            self.totalList.append(CFunc.enterConvert(self.currencies[i], self.totalCurrency, float(self.cValue[i])))
+        for j in range(len(self.totalList)):
+            try:
+                self.totalList[j] = float(self.totalList[j])
+            except(TypeError):
+                print("\n\nUnable to get total in selected currency.  Please try again.\n")
+                break
+        try:
+            print("\n\nTotal = :", sum(self.totalList), self.totalCurrency, "\n")
+        except(TypeError):
+            pass
     def editEntry(self):
         print("\n\n\nAccount details:\n")
         self.readValue()
@@ -279,19 +367,18 @@ class Db(object):
         self.columns = {1:'AccountName',2:'Balance',3:'EntryDate'}
         self.editDate = []
         self.monthValue = True
+
+        # Start of edit prompt:
         while True:
             self.chooseAccount = input("\nPlease enter account ID to edit; type exit to cancel: \n")
             self.isEqual = False
             c.execute("SELECT ID FROM Accounts_CV;")
             self.acct_id = c.fetchall()
             for i in self.acct_id:
-                # print(self.isEqual)
                 i = int(re.sub('[\,\(\)]','',str(i)))
-                # print(i)
                 if self.chooseAccount == str(i):
                     self.isEqual = True
                     self.chooseAccount == int(self.chooseAccount)
-                    # print(self.isEqual)
                     break
                 elif self.chooseAccount.upper() == 'EXIT':
                     break
@@ -301,7 +388,7 @@ class Db(object):
                 print("\n\n\n     ***************************************\n     **                                   **\n     ** Please select field to edit:      **\n     **                                   **\n     ** 1. Account name.                  **\n     ** 2. Account balance.               **\n     ** 3. Entry date.                    **\n     ** 4. Exit.                          **\n     **                                   **\n     ***************************************\n")
                 self.fieldtoedit = input("Please make an entry from 1-4: ")
                 self.chosen = self.columns[int(self.fieldtoedit)]
-                self.fetch = "SELECT * FROM Accounts_CV WHERE ID=?;"  #  <-- Aha!!!!  It's all wrong here...  It's asking for the ID while the input refers to the column heading.
+                self.fetch = "SELECT * FROM Accounts_CV WHERE ID=?;" 
                 c.execute(self.fetch, (self.chooseAccount,))
                 self.gathered = c.fetchone()[self.choices[self.fieldtoedit]]
                 print(self.gathered)
@@ -313,12 +400,12 @@ class Db(object):
                 if self.chosen == 'EntryDate':
                     for j in month_list:
                         print(j, month_list[j])
+                        
                     # Enter month and year, check for inconsistencies
                     while self.monthValue == True:
                         self.editDate.append(input("Please enter the numeric value of the month from 1-12: "))
                         print(month_list[int(self.editDate[0])])
                         for k in list(range(1,13)):
-                            # print(k)
                             if int(k) == int(self.editDate[0]):
                                 self.monthValue = False
                                 self.editDate[0] = month_list[k]
@@ -339,7 +426,8 @@ class Db(object):
                 #
                 # ^^^^ The above input is for all other data types besides date ^^^^
                 #
-                self.sql = "UPDATE Accounts_CV SET %s=? WHERE ID=?;" % (self.chosen)
+                self.sql = "UPDATE Accounts_CV SET %s=? WHERE ID=?;" % (self.chosen) # Python wildcard acceptable here as the value comes from a dict which is outside of the user's input.  No SQL injections here!
+                c.execute("SELECT EntryDate FROM Accounts_CV WHERE ID=?;", (self.chooseAccount))
                 c.execute(self.sql, (self.edited, self.chooseAccount,))
                 con.commit()
                 self.readValue()
