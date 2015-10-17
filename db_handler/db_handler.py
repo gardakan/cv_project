@@ -1,13 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sqlite3 as lite      # Using sqlite for now, port to mysql for improved security later
+import sqlite3 as lite      
 import sys
 import datetime
 import re
 import requests
-
-# print(sys.version_info) # <-- used it once for diagnostic purposes, just leaving it in for now.
+from tkinter import *
 
 con = lite.connect('account_cv.db') # Connect to database
 
@@ -249,19 +248,20 @@ CFunc = CurrencyFunctions() # Instantiate the CurrencyFunctions class
 class Db(object):
     def __init__(self):
         d = 1
-        self.con = con
-        self.c = c
+        # self.con = con
+        # self.c = c
+        self.createTable()
         
         pass
 
     # Create the tables if they don't already exist.
     def createTable(self):
         try:
-            c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL, DefaultCurrency TEXT, Total REAL DEFAULT NULL);")
+            c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL, TaxPaid REAL, DefaultCurrency TEXT, Total REAL DEFAULT NULL);")
         except(lite.Error):
             pass                # Ignore table creation if it already exists.  Another (better) way might be to check if the table exists, if not, then create it.  But this works.
         c.execute("CREATE TABLE IF NOT EXISTS Currency(ID INTEGER, Currency TEXT);") # This works better, and is apparently the proper way to do things.  This table will be referenced for currency conversions.
-        c.execute("CREATE TABLE IF NOT EXISTS DateTime(ID INTEGER, EntryDate TEXT, Balance REAL);")
+        # c.execute("CREATE TABLE IF NOT EXISTS DateTime(ID INTEGER, EntryDate TEXT, Balance REAL);")
 
     # Iterates over the Accounts_CV table and outputs all account info
     def readValue(self):
@@ -270,8 +270,10 @@ class Db(object):
         print("\nDatabse ID; Date in month and year (default = todays date); Account name; Current balance; Default currency\n")
         for row in self.rows:
             row = str(row)                          # Convert to string
-            row = re.sub('[\(\"\[\'\]\)]', '', row) # Remove special characters from result
-            print(row)
+            row = re.sub('[\(\"\[\'\]\)\,]', '', row) # Remove special characters from result
+            row = row.split()
+            row[1:3] = [' '.join(row[1:3])]
+            return row                              # Returns values row by row
 
     # Method for getting the primary key ID of an account.
     def writeToCurrencyDb(self, name):
@@ -284,19 +286,24 @@ class Db(object):
         return self.result
 
     # Method for adding new accounts.
-    def dataEntry(self):
+    def dataEntry(self, b, x, e, d):
+        self.b = b  # account name
+        self.c = x  # account balance
+        self.d = d  # default currency
+        self.e = e  # tax paid
         self.a = current_date
-        self.b = input("Please enter account name: ")
+        '''self.b = input("Please enter account name: ")
         self.c = input("Please enter account balance: ")
+        self.e = input("Please enter the tax paid: ")'''
         while True:
-            self.d = input("Please enter default currency: ")
+            # self.d = input("Please enter default currency: ")
             self.d = self.d.upper()
             if self.d in currencyList:
                 break
             else:
                 continue
-        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?, NULL);"
-        c.execute(self.sql, (str(self.a), self.b, self.c, self.d))
+        self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?, ?, NULL);"
+        c.execute(self.sql, (str(self.a), self.b, self.c, self.e, self.d))
         c.execute("INSERT INTO Currency VALUES(?, ?);", (int(self.writeToCurrencyDb(self.b)), self.d)) # Store currency in separate table for conversion purposes
         while True:
             self.commit = input("Would you like to save your data? ")
@@ -363,8 +370,8 @@ class Db(object):
     def editEntry(self):
         print("\n\n\nAccount details:\n")
         self.readValue()
-        self.choices = {'1':2,'2':3,'3':1}
-        self.columns = {1:'AccountName',2:'Balance',3:'EntryDate'}
+        self.choices = {'1':2,'2':3,'3':1,'4':4}
+        self.columns = {1:'AccountName',2:'Balance',3:'EntryDate',4:'TaxPaid'}
         self.editDate = []
         self.monthValue = True
 
@@ -385,8 +392,12 @@ class Db(object):
                 else:
                     continue
             if self.isEqual == True:
-                print("\n\n\n     ***************************************\n     **                                   **\n     ** Please select field to edit:      **\n     **                                   **\n     ** 1. Account name.                  **\n     ** 2. Account balance.               **\n     ** 3. Entry date.                    **\n     ** 4. Exit.                          **\n     **                                   **\n     ***************************************\n")
-                self.fieldtoedit = input("Please make an entry from 1-4: ")
+                print("\n\n\n     ***************************************\n     **                                   **\n     ** Please select field to edit:      **\n     **                                   **\n     ** 1. Account name.                  **\n     ** 2. Account balance.               **\n     ** 3. Entry date.                    **\n     ** 4. Tax Paid.                      **\n     ** 5. Exit.                          **\n     **                                   **\n     ***************************************\n")
+                self.fieldtoedit = input("Please make an entry from 1-5: ")
+                if self.fieldtoedit == '5':
+                    break
+                else:
+                    continue
                 self.chosen = self.columns[int(self.fieldtoedit)]
                 self.fetch = "SELECT * FROM Accounts_CV WHERE ID=?;" 
                 c.execute(self.fetch, (self.chooseAccount,))
