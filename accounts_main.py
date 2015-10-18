@@ -3,8 +3,6 @@ import tkinter.messagebox
 from tkinter import ttk
 import db_handler
 
-db = db_handler.Db()
-
 
 # Dropdown menu - generate reports.
 # Tooltip bar - print status when executing functions (i.e. currency conversions)
@@ -20,6 +18,7 @@ if answer == 'yes':
     print("fwuifl gufl w7f yf7wly389gwul8902ddshi d . ... . .....")'''
 
 class EnterNewWindow(object):
+    
     def __init__(self, master):
         top = self.top = Toplevel(master)
         self.frameNew=Frame(top)
@@ -48,27 +47,50 @@ class EnterNewWindow(object):
         self.frameNew3.pack(side=BOTTOM)
         self.b=Button(self.frameNew3,text='Submit',command=self.cleanup)
         self.b.pack()
-        # self.e = re.sub('[\[\]\'\"]\,','', str([self.aname.get(),self.abal.get(),self.atax.get(),self.acur.get()]))
+        
     def cleanup(self):
         self.name = self.aname.get()
         self.bal = self.abal.get()
         self.tax = self.atax.get()
         self.cur = self.acur.get()
+        self.nonvalue = True
         self.value = [self.name, self.bal, self.tax, self.cur]
-        self.top.destroy()
+        # Avoid TypeErrors vvvvvvv
+        while self.nonvalue == True:
+            for i in range(len(self.value)):
+                if not self.value[i]:
+                    tkinter.messagebox.showinfo('Please complete all fields', 'All fields must be filled.')
+                    self.nonvalue = False
+                    break
+            while self.nonvalue == True:
+                try:
+                    self.baltest = float(self.bal)
+                except(ValueError):
+                    tkinter.messagebox.showinfo('ValueError: Account Balance', 'Only characters 0-9 and the decimal point "." may be used in this field.')
+                    self.nonvalue = False
+                    break
+                try:
+                    self.taxtest = float(self.tax)
+                except(ValueError):
+                    tkinter.messagebox.showinfo('ValueError: Tax Paid', 'Only characters 0-9 and the decimal point "." may be used in this field.')
+                    self.nonvalue = False
+                    break
+                self.nonvalue = False
+                self.top.destroy()
 
 
 class mainWindow(object):
-    # status bar
+    
     def __init__(self,master):
         self.master=master
+
+        # status bar
         self.status = Label(master, textvariable=a, bd=1, relief=SUNKEN, anchor=W)
         status = self.status
         status.pack(side=BOTTOM, fill=X)
         a.set("This will be displayed below ???")
 
         # main menu
-
         self.menu = Menu(root)
         menu = self.menu
         root.config(menu=menu)
@@ -93,14 +115,13 @@ class mainWindow(object):
         reportsMenu.add_command(label="Generate monthly report...", command=self.doNothing)
 
         # the toolbar
-
         self.toolbar = Frame(root, bg="light slate grey")
         toolbar = self.toolbar
 
-        self.insertButt = Button(toolbar, text="Big big boom", command=self.setStatus)
+        self.insertButt = Button(toolbar, text="Add New...", command=self.enterNew)
         insertButt = self.insertButt
         insertButt.pack(side=LEFT, padx=2,pady = 2)
-        self.printButt = Button(toolbar, text="Print", command=self.doNothing)
+        self.printButt = Button(toolbar, text="Delete Account", command=self.doNothing)
         printButt = self.printButt
         printButt.pack(side=LEFT, padx=2,pady = 2)
         self.refreshButt = Button(toolbar, text="Refresh", command=self.valuesTree)
@@ -112,50 +133,55 @@ class mainWindow(object):
         self.frame1 = Frame(root)
         frame1 = self.frame1
 
-        # not working yet, but account info to be displayed in the main bit of the screen.
+        # View database contents
         self.tree = ttk.Treeview(frame1)
-        tree = self.tree
 
-        tree["columns"]=("one","two","three","four","five","six")
-        tree.column("one", width=100)
-        tree.column("two", width=200)
-        tree.column("three", width=150)
-        tree.column("four", width=100)
-        tree.column("five", width=100)
-        tree.column("six", width=100)
-        tree.heading("one", text="Account ID")
-        tree.heading("two", text="Entry Date")
-        tree.heading("three", text="Account Name")
-        tree.heading("four", text="Account Balance")
-        tree.heading("five", text="Tax paid")
-        tree.heading("six", text="Default Currency")
+        self.tree["columns"]=("one","two","three","four","five","six")
+        self.tree.column("one", width=100)
+        self.tree.column("two", width=200)
+        self.tree.column("three", width=150)
+        self.tree.column("four", width=100)
+        self.tree.column("five", width=100)
+        self.tree.column("six", width=100)
+        self.tree.heading("one", text="Account ID")
+        self.tree.heading("two", text="Entry Date")
+        self.tree.heading("three", text="Account Name")
+        self.tree.heading("four", text="Account Balance")
+        self.tree.heading("five", text="Tax paid")
+        self.tree.heading("six", text="Default Currency")
 
         '''tree.insert("" , 0, text="Line 1", values=("1A","1B","1C","1D","1E","1F"))  # Return values for db.readValue() method here.
 
         self.id2 = tree.insert("", 1, "dir2", text="Dir 2")                      # A directory, probably won't be needed for this unless previous months are listed here...
         tree.insert(self.id2, 3, text=" sub dir 2", values=(list(range(6))))'''
 
-        tree.pack()
+        self.tree.pack()
 
         frame1.pack(side=TOP)
 
     def enterNew(self):
-        self.ena = EnterNewWindow(self.master)                              # Popup window happy time!
+        self.ena = EnterNewWindow(self.master)  # Popup window with entry fields
         self.master.wait_window(self.ena.top)
         self.result = self.ena.value
         print(self.result)
         db.dataEntry(self.result[0],float(self.result[1]),float(self.result[2]),self.result[3])
+        a.set("Entry %s succesfully added." % self.result[0])
+        db.readValue()
 
     def valuesTree(self):
+        
         try:
             self.row = db.readValue()
             row = self.row
-            self.tree.insert("" , 0, text=row[0], values=(row[1:6]))
+            self.tree.delete(*self.tree.get_children())
+            for i in row:
+                self.tree.insert("" , int(i[0])-1, text=i[0], values=(i[1:6]))
+            a.set("Database updated.")
         except(TypeError):
             a.set("Database is empty.")
 
     def doNothing(self):
-        a.set("Flippy chimps")
+        a.set("Nothing here...")
     
     def quitProgram(self):
         quitYN = tkinter.messagebox.askquestion("Exit", "Save changes?")
@@ -168,9 +194,13 @@ class mainWindow(object):
             root.destroy()
 
     def setStatus(self):
-        a.set("Blimpy chunks")
+        a.set("This will do more later...")
+
+    def deleteValue(self):
+        pass
 
 root = Tk()
+db = db_handler.Db()
 a = StringVar()
 m = mainWindow(root)
 root.mainloop()

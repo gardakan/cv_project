@@ -7,6 +7,7 @@ import datetime
 import re
 import requests
 from tkinter import *
+import tkinter.messagebox
 
 con = lite.connect('account_cv.db') # Connect to database
 
@@ -248,8 +249,8 @@ CFunc = CurrencyFunctions() # Instantiate the CurrencyFunctions class
 class Db(object):
     def __init__(self):
         d = 1
-        # self.con = con
-        # self.c = c
+        self.con = con
+        self.c = c
         self.createTable()
         
         pass
@@ -265,15 +266,17 @@ class Db(object):
 
     # Iterates over the Accounts_CV table and outputs all account info
     def readValue(self):
+        self.allRows = []
         c.execute("SELECT * FROM Accounts_CV;")
         self.rows = c.fetchall()
-        print("\nDatabse ID; Date in month and year (default = todays date); Account name; Current balance; Default currency\n")
+        # print("\nDatabase ID; Date in month and year (default = todays date); Account name; Current balance; Default currency\n")
         for row in self.rows:
             row = str(row)                          # Convert to string
             row = re.sub('[\(\"\[\'\]\)\,]', '', row) # Remove special characters from result
             row = row.split()
             row[1:3] = [' '.join(row[1:3])]
-            return row                              # Returns values row by row
+            self.allRows.append(row)
+        return self.allRows             # Returns all values
 
     # Method for getting the primary key ID of an account.
     def writeToCurrencyDb(self, name):
@@ -292,11 +295,7 @@ class Db(object):
         self.d = d  # default currency
         self.e = e  # tax paid
         self.a = current_date
-        '''self.b = input("Please enter account name: ")
-        self.c = input("Please enter account balance: ")
-        self.e = input("Please enter the tax paid: ")'''
         while True:
-            # self.d = input("Please enter default currency: ")
             self.d = self.d.upper()
             if self.d in currencyList:
                 break
@@ -304,15 +303,15 @@ class Db(object):
                 continue
         self.sql = "INSERT INTO Accounts_CV VALUES(NULL, ?, ?, ?, ?, ?, NULL);"
         c.execute(self.sql, (str(self.a), self.b, self.c, self.e, self.d))
+        print("Executed")
         c.execute("INSERT INTO Currency VALUES(?, ?);", (int(self.writeToCurrencyDb(self.b)), self.d)) # Store currency in separate table for conversion purposes
-        while True:
-            self.commit = input("Would you like to save your data? ")
-            if self.commit.upper() == 'Y' or self.commit.upper() == 'N':
-                break
+        '''while True:
+            self.commit = tkinter.messagebox.askquestion('Commit Values', 'Would you like to save your data?')
             
         # Store default currency in Currency table.
-        if self.commit.upper() == 'Y':
-            con.commit()
+        if self.commit == 'yes':'''
+        con.commit()
+        print("\n\nCommitted.\n\n")
         self.readValue()
 
     # Method used by deleteRow, should ideally be combined into one method.  This method does the actual SQL deletion.
