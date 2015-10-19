@@ -1,13 +1,20 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
 import sqlite3 as lite      
 import sys
 import datetime
 import re
-import requests
 from tkinter import *
 import tkinter.messagebox
+import requests
+
+__author__ = "John Tamm-Buckle"
+__credits__ = "John Tamm-Buckle"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__maintainer__ = "John Tamm-Buckle"
+__email__ = "jtammbuckle@gmail.com"
+__status__ = "Development"
 
 con = lite.connect('account_cv.db') # Connect to database
 
@@ -315,12 +322,15 @@ class Db(object):
         self.readValue()
 
     # Method used by deleteRow, should ideally be combined into one method.  This method does the actual SQL deletion.
-    def deleteValue(self):
+    def deleteValue(self, y):
         self.sql = "DELETE FROM Accounts_CV WHERE ID=?;"
-        self.x = input("Enter Account ID to delete: ")
-        c.execute(self.sql, (self.x,))
-        con.commit()
-        self.readValue()
+        self.x = y
+        if y == 'cancel':
+            pass
+        else:
+            c.execute(self.sql, (self.x,))
+            con.commit()
+            self.readValue()
 
     # Delete an account
     def deleteRow(self):
@@ -336,6 +346,7 @@ class Db(object):
 
     # Method to get the total balance of all accounts in given currency
     def getTotal(self):
+        """Check current exchange rates and convert current account balance to chosen currency, and display the total"""
         while True:
             self.totalCurrency = input("Please enter the currency in which you would like the total to be displayed: ")
             self.totalCurrency = self.totalCurrency.upper()

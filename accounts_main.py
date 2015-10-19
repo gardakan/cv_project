@@ -1,7 +1,17 @@
+#!/usr/bin/python
+
 from tkinter import *
 import tkinter.messagebox
 from tkinter import ttk
 import db_handler
+
+__author__ = "John Tamm-Buckle"
+__credits__ = "John Tamm-Buckle"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__maintainer__ = "John Tamm-Buckle"
+__email__ = "jtammbuckle@gmail.com"
+__status__ = "Development"
 
 
 # Dropdown menu - generate reports.
@@ -18,8 +28,8 @@ if answer == 'yes':
     print("fwuifl gufl w7f yf7wly389gwul8902ddshi d . ... . .....")'''
 
 class EnterNewWindow(object):
-    
     def __init__(self, master):
+        """Edit window for adding new accounts to the database.  4 text fields to enter name, balance, tax paid and default currency"""
         top = self.top = Toplevel(master)
         self.frameNew=Frame(top)
         self.frameNew.pack(side=TOP)
@@ -79,9 +89,52 @@ class EnterNewWindow(object):
                 self.top.destroy()
 
 
+class DeleteAccount(object):
+    def __init__(self, master):
+        """Enter the ID of the account to delete"""
+        top2 = self.top2 = Toplevel(master)
+        self.delFrameNew=Frame(top2)
+        self.delFrameNew.pack(side=TOP)
+        self.delLabel = Label(self.delFrameNew, text = "Please ente the ID of the account to delete: ")
+        self.delLabel.pack()
+        self.delFrameNew2=Frame(top2)
+        self.delFrameNew2.pack(side=TOP)
+        self.deLab = Label(self.delFrameNew2, text = "Account ID: ")
+        self.deLab.grid(row = 0, column = 0, sticky=E)
+        self.delName = Entry(self.delFrameNew2)
+        self.delName.grid(row = 0, column = 1)
+        self.delFrameNew3=Frame(top2)
+        self.delFrameNew3.pack(side=BOTTOM)
+        self.b=Button(self.delFrameNew3,text='Submit',command=self.delCleanup)
+        self.b.pack()
+
+    def delCleanup(self):
+        self.deletedID = self.delName.get()
+        self.deletedVar = True
+        while self.deletedVar == True:
+            self.verify = tkinter.messagebox.askquestion('Delete Account', 'Are you sure you want to continue?  This action cannot be undone.')
+            if self.verify == 'no':
+                self.deletedID = "cancel"
+                self.top2.destroy()
+            if not self.deletedID:
+                tkinter.messagebox.showinfo('Please complete all fields', 'All fields must be filled.')
+                self.deletedVar = False
+                break
+            else:
+                try:
+                    self.deletedID = int(self.deletedID)
+                except(ValueError):
+                    tkinter.messagebox.showinfo('ValueError', 'Only integer values between 0-9 may be used in this field.')
+                    self.deletedVar = False
+                    break
+            self.deletedVar = False
+            self.top2.destroy()
+            
+
 class mainWindow(object):
     
     def __init__(self,master):
+        """Main display - shows database contents as well as status messages, and button shortcuts to add and delete accounts."""
         self.master=master
 
         # status bar
@@ -91,7 +144,7 @@ class mainWindow(object):
         a.set("This will be displayed below ???")
 
         # main menu
-        self.menu = Menu(root)
+        self.menu = Menu(root)  
         menu = self.menu
         root.config(menu=menu)
 
@@ -99,7 +152,7 @@ class mainWindow(object):
         subMenu = self.subMenu
         menu.add_cascade(label="File", menu=subMenu)
         subMenu.add_command(label="Add New...", command=self.enterNew)
-        subMenu.add_command(label="Delete Account", command=db.deleteRow)
+        subMenu.add_command(label="Delete Account", command=self.deleteValue)
         subMenu.add_separator()
         subMenu.add_command(label="Arse about on the internet...", command=self.doNothing)
         subMenu.add_command(label="Quit", command=self.quitProgram)
@@ -121,9 +174,9 @@ class mainWindow(object):
         self.insertButt = Button(toolbar, text="Add New...", command=self.enterNew)
         insertButt = self.insertButt
         insertButt.pack(side=LEFT, padx=2,pady = 2)
-        self.printButt = Button(toolbar, text="Delete Account", command=self.doNothing)
-        printButt = self.printButt
-        printButt.pack(side=LEFT, padx=2,pady = 2)
+        self.delButt = Button(toolbar, text="Delete Account", command=self.deleteValue)
+        delButt = self.delButt
+        delButt.pack(side=LEFT, padx=2,pady = 2)
         self.refreshButt = Button(toolbar, text="Refresh", command=self.valuesTree)
         refreshButt = self.refreshButt
         refreshButt.pack(side=LEFT, padx=2,pady = 2)
@@ -158,18 +211,28 @@ class mainWindow(object):
         self.tree.pack()
 
         frame1.pack(side=TOP)
+        self.valuesTree()
 
     def enterNew(self):
+        """Add new account"""
         self.ena = EnterNewWindow(self.master)  # Popup window with entry fields
         self.master.wait_window(self.ena.top)
         self.result = self.ena.value
-        print(self.result)
         db.dataEntry(self.result[0],float(self.result[1]),float(self.result[2]),self.result[3])
         a.set("Entry %s succesfully added." % self.result[0])
         db.readValue()
 
+    def deleteValue(self):
+        """Delete account"""
+        self.delAccount = DeleteAccount(self.master)
+        self.master.wait_window(self.delAccount.top2)
+        self.delRes = self.delAccount.deletedID
+        db.deleteValue(self.delRes)
+        a.set("Entry deleted.")
+        db.readValue()
+
     def valuesTree(self):
-        
+        """Display current database"""
         try:
             self.row = db.readValue()
             row = self.row
@@ -181,6 +244,7 @@ class mainWindow(object):
             a.set("Database is empty.")
 
     def doNothing(self):
+        """Test function which doesn't do anything useful"""
         a.set("Nothing here...")
     
     def quitProgram(self):
@@ -194,10 +258,8 @@ class mainWindow(object):
             root.destroy()
 
     def setStatus(self):
+        """Displays status message"""
         a.set("This will do more later...")
-
-    def deleteValue(self):
-        pass
 
 root = Tk()
 db = db_handler.Db()
