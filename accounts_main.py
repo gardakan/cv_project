@@ -89,6 +89,97 @@ class EnterNewWindow(object):
                 self.top.destroy()
 
 
+class EditAccount(object):
+    def __init__(self, master):
+        """Populates entry fields with data from selected account, user can edit and click submit to confirm changes."""
+        top3 = self.top3 = Toplevel(master)
+        self.editFrame = Frame(top3)
+        self.editFrame.pack(side=TOP)
+        self.editLabel = Label(self.editFrame, text = "Please enter the account ID of the account you to edit: ")
+        self.editLabel.pack()
+        self.editFrame2 = Frame(top3)
+        self.editFrame2.pack(side=TOP)
+        self.editLabelID = Label(self.editFrame2, text = "Account ID: ")
+        self.editLabelID.grid(row = 0, column = 0, sticky = E)
+        self.editID = Entry(self.editFrame2)
+        self.editID.grid(row = 0, column = 1)
+        self.editFrame3 = Frame(top3)
+        self.editFrame3.pack(side=BOTTOM)
+        self.b3 = Button(self.editFrame3, text = 'Submit', command = self.nextEdit)
+        self.b3.pack()
+
+    def nextEdit(self):
+        self.editedID = self.editID.get()
+        self.editVar = True
+        while self.editVar == True:
+            if not self.editedID:
+                tkinter.messagebox.showinfo('Please complete all fields', 'All fields must be filled.')
+                self.editVar = False
+                break
+            else:
+                try:
+                    self.editedID = int(self.editedID)
+                except(ValueError):
+                    tkinter.messagebox.showinfo('ValueError', 'Only integer values between 0-9 may be used in this field.')
+                    self.editVar = False
+                    break
+            self.editVar = False
+            self.top3.destroy()
+
+class EditFieldPrepopulate(object):
+    def __init__(self, master):
+        """Prepopulate text fields with data from sqlite table, changes are saved"""
+        top4 = self.top4 = Toplevel(master)
+        self.questionFrame = Frame(top4)
+        self.questionFrame.pack(side=TOP)
+        self.a = {}
+        self.k = 0
+        self.newEdits = []
+        self.dateLab = Label(self.questionFrame, text="Entry date (MM, YYYY): ")
+        self.dateLab.grid(row = 0, column = 0, sticky = E)
+        self.acctLab = Label(self.questionFrame, text="Account name: ")
+        self.acctLab.grid(row = 1, column = 0, sticky = E)
+        self.balaLab = Label(self.questionFrame, text="Account balance: ")
+        self.balaLab.grid(row = 2, column = 0, sticky = E)
+        self.taxpLab = Label(self.questionFrame, text="Tax paid: ")
+        self.taxpLab.grid(row = 3, column = 0, sticky = E)
+        self.editField(m.editList)
+        self.submitFrame = Frame(top4)
+        self.submitFrame.pack(side=BOTTOM)
+        self.submit = Button(self.submitFrame, text = "Submit", command = self.getEditedFieldValues)
+        self.submit.pack()
+        
+    def editField(self, results):
+        while self.k < len(results):
+            key = self.k
+            self.a[self.k] = Text(self.questionFrame, height=1, width=30)
+            self.a[self.k].insert(END, str(results[self.k]))
+            self.a[self.k].grid(row=self.k,column = 1)
+            self.k+=1
+        self.binding()
+
+    def default(self, event):
+        for itemIndex in self.a:
+            current = self.a[itemIndex].get("1.0",END)
+            if current == "Default\n":
+                self.a[itemIndex].delete("1.0",END)
+            elif current == "\n":
+                self.a[itemIndex].insert("1.0","Default")
+                
+    def binding(self):
+        for itemIndex in self.a:
+            self.a[itemIndex].bind("<FocusIn>", self.default)
+            self.a[itemIndex].bind("<FocusOut>",self.default)
+
+    def getEditedFieldValues(self):
+        """Get edited values as close window"""
+        for itemIndex in self.a:
+            editResults = self.a[itemIndex].get("1.0",END)
+            editResults = re.sub('[\\n]','',editResults)
+            self.newEdits.append(editResults)
+        # Type checking here...
+        self.top4.destroy()
+
 class DeleteAccount(object):
     def __init__(self, master):
         """Enter the ID of the account to delete"""
@@ -105,8 +196,8 @@ class DeleteAccount(object):
         self.delName.grid(row = 0, column = 1)
         self.delFrameNew3=Frame(top2)
         self.delFrameNew3.pack(side=BOTTOM)
-        self.b=Button(self.delFrameNew3,text='Submit',command=self.delCleanup)
-        self.b.pack()
+        self.b2=Button(self.delFrameNew3,text='Submit',command=self.delCleanup)
+        self.b2.pack()
 
     def delCleanup(self):
         self.deletedID = self.delName.get()
@@ -160,7 +251,7 @@ class mainWindow(object):
         self.editMenu = Menu(menu)
         editMenu = self.editMenu
         menu.add_cascade(label="Edit", menu=editMenu)
-        editMenu.add_command(label="Edit Account...", command = db.editEntry)
+        editMenu.add_command(label="Edit Account...", command = self.editEntry)
 
         self.reportsMenu = Menu(menu)
         reportsMenu = self.reportsMenu
@@ -220,7 +311,7 @@ class mainWindow(object):
         self.result = self.ena.value
         db.dataEntry(self.result[0],float(self.result[1]),float(self.result[2]),self.result[3])
         a.set("Entry %s succesfully added." % self.result[0])
-        db.readValue()
+        self.valuesTree()
 
     def deleteValue(self):
         """Delete account"""
@@ -229,7 +320,22 @@ class mainWindow(object):
         self.delRes = self.delAccount.deletedID
         db.deleteValue(self.delRes)
         a.set("Entry deleted.")
-        db.readValue()
+        self.valuesTree()
+
+    def editEntry(self):
+        """Edit the name, date, balance, and tax paid of an existing account"""
+        self.editAccount = EditAccount(self.master)
+        self.master.wait_window(self.editAccount.top3)
+        self.editRes = int(self.editAccount.editedID)
+        self.editList = db.editEntryValues(self.editRes)
+
+        self.newEdit = EditFieldPrepopulate(self.master)
+        # self.newEdit.editField(self.editList)
+        self.master.wait_window(self.newEdit.top4)
+        self.finalResult = self.newEdit.newEdits
+        print(self.finalResult)
+        a.set("Edit saved")
+        self.valuesTree()
 
     def valuesTree(self):
         """Display current database"""
@@ -242,6 +348,10 @@ class mainWindow(object):
             a.set("Database updated.")
         except(TypeError):
             a.set("Database is empty.")
+
+    def getTotal(self):
+        """Get account and taxes paid total in pre-determined currency"""
+        pass
 
     def doNothing(self):
         """Test function which doesn't do anything useful"""

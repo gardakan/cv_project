@@ -377,6 +377,12 @@ class Db(object):
             print("\n\nTotal = :", sum(self.totalList), self.totalCurrency, "\n")
         except(TypeError):
             pass
+
+    def editEntryValues(self, z):
+        c.execute("SELECT EntryDate, AccountName, Balance, TaxPaid FROM Accounts_CV WHERE ID=?;", (z,))
+        self.editResult = c.fetchone()
+        return self.editResult
+
     def editEntry(self):
         print("\n\n\nAccount details:\n")
         self.readValue()
