@@ -11,7 +11,7 @@ import requests
 __author__ = "John Tamm-Buckle"
 __credits__ = "John Tamm-Buckle"
 __license__ = "GPL"
-__version__ = "1.0.1"
+__version__ = "0.0.1"
 __maintainer__ = "John Tamm-Buckle"
 __email__ = "jtammbuckle@gmail.com"
 __status__ = "Development"

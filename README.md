@@ -1,13 +1,13 @@
 # cv_project
 
-This is a project for a client which will help track monthly balances plus total in accounts located in several countries.  
-At the moment it just works on the command line, standalone to follow.
+This is an application to help track monthly balances and taxes paid in accounts located across several countries.  
+It is under development and is not yet fully functional.
 
 Includes the files:
 
-cv_main.py - The main loop.  This is the file that runs the program.
+accounts_main.py - The main loop.  This is the file that runs the program and contains the GUI.
 
-db_handler - Package containing db_handler.py.  This contains the guts.
+db_handler - Package containing db_handler.py.  This contains database handling methods.
 
 Dependencies:
 Requests (https://github.com/kennethreitz/requests) library needed in order for it to work.
