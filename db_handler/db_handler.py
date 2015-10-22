@@ -345,16 +345,12 @@ class Db(object):
                 continue
 
     # Method to get the total balance of all accounts in given currency
-    def getTotal(self):
+    def getTotal(self, choice):
         """Check current exchange rates and convert current account balance to chosen currency, and display the total"""
-        while True:
-            self.totalCurrency = input("Please enter the currency in which you would like the total to be displayed: ")
-            self.totalCurrency = self.totalCurrency.upper()
-            if self.totalCurrency in currencyList:
-                break
-            else:
-                print("Invalid entry.  Please enter the ISO 4217 currency code (three letter abbreviation).")
-                continue
+
+        self.totalCurrency = choice
+        self.totalCurrency = self.totalCurrency.upper()
+
         c.execute("SELECT DefaultCurrency FROM Accounts_CV;")
         self.currencies = c.fetchall()
         self.totalList = []
@@ -365,99 +361,61 @@ class Db(object):
             self.currencies[i] = re.sub('[\(\)\,\']', '', str(self.currencies[i]))
             
             # Call on enterConvert
-            print("Converting from %s to %s with an account balance of %f. " % (self.currencies[i], self.totalCurrency, float(self.cValue[i])))
+            self.statusmessage = ("Converting from %s to %s with an account balance of %f. " % (self.currencies[i], self.totalCurrency, float(self.cValue[i])))
             self.totalList.append(CFunc.enterConvert(self.currencies[i], self.totalCurrency, float(self.cValue[i])))
         for j in range(len(self.totalList)):
             try:
                 self.totalList[j] = float(self.totalList[j])
             except(TypeError):
-                print("\n\nUnable to get total in selected currency.  Please try again.\n")
+                self.statusmessage = ("\n\nUnable to get total in selected currency.  Please try again.\n")
                 break
         try:
-            print("\n\nTotal = :", sum(self.totalList), self.totalCurrency, "\n")
+            self.statusmessage = ("\n\nTotal = :", sum(self.totalList), self.totalCurrency, "\n")
         except(TypeError):
             pass
+        finally:
+            return sum(self.totalList), self.totalCurrency
 
     def editEntryValues(self, z):
         c.execute("SELECT EntryDate, AccountName, Balance, TaxPaid FROM Accounts_CV WHERE ID=?;", (z,))
         self.editResult = c.fetchone()
         return self.editResult
 
-    def editEntry(self):
-        print("\n\n\nAccount details:\n")
+    def editEntry(self, editedFields, acctID):
+        '''print("\n\n\nAccount details:\n")
         self.readValue()
         self.choices = {'1':2,'2':3,'3':1,'4':4}
-        self.columns = {1:'AccountName',2:'Balance',3:'EntryDate',4:'TaxPaid'}
-        self.editDate = []
-        self.monthValue = True
+        self.columns = {1:'AccountName',2:'Balance',0:'EntryDate',3:'TaxPaid'}'''
+        self.individualItems = {}
+        self.k = 0
 
         # Start of edit prompt:
-        while True:
-            self.chooseAccount = input("\nPlease enter account ID to edit; type exit to cancel: \n")
-            self.isEqual = False
-            c.execute("SELECT ID FROM Accounts_CV;")
-            self.acct_id = c.fetchall()
-            for i in self.acct_id:
-                i = int(re.sub('[\,\(\)]','',str(i)))
-                if self.chooseAccount == str(i):
-                    self.isEqual = True
-                    self.chooseAccount == int(self.chooseAccount)
-                    break
-                elif self.chooseAccount.upper() == 'EXIT':
-                    break
-                else:
-                    continue
-            if self.isEqual == True:
-                print("\n\n\n     ***************************************\n     **                                   **\n     ** Please select field to edit:      **\n     **                                   **\n     ** 1. Account name.                  **\n     ** 2. Account balance.               **\n     ** 3. Entry date.                    **\n     ** 4. Tax Paid.                      **\n     ** 5. Exit.                          **\n     **                                   **\n     ***************************************\n")
-                self.fieldtoedit = input("Please make an entry from 1-5: ")
-                if self.fieldtoedit == '5':
-                    break
-                else:
-                    continue
-                self.chosen = self.columns[int(self.fieldtoedit)]
-                self.fetch = "SELECT * FROM Accounts_CV WHERE ID=?;" 
-                c.execute(self.fetch, (self.chooseAccount,))
-                self.gathered = c.fetchone()[self.choices[self.fieldtoedit]]
-                print(self.gathered)
-                #
-                #
-                #  vvvv The bit below is the logic to get the formatting of the date correct vvvv
-                #
-                #
-                if self.chosen == 'EntryDate':
-                    for j in month_list:
-                        print(j, month_list[j])
-                        
-                    # Enter month and year, check for inconsistencies
-                    while self.monthValue == True:
-                        self.editDate.append(input("Please enter the numeric value of the month from 1-12: "))
-                        print(month_list[int(self.editDate[0])])
-                        for k in list(range(1,13)):
-                            if int(k) == int(self.editDate[0]):
-                                self.monthValue = False
-                                self.editDate[0] = month_list[k]
-                                break
-                            else:
-                                continue
-                    while True:
-                        self.editDate.append(input("Please enter the 4-digit year: "))
-                        if len(list(str(self.editDate[1]))) == 4 and int(self.editDate[1]) <= year:
-                            break
-                        else:
-                            del self.editDate[-1]    # Remove appended 
-                            continue
-                    self.editDate = str(self.editDate)
-                    self.edited = re.sub('[\[\]\']','',self.editDate)
-                else:
-                    self.edited = input("Please enter new value: ")
-                #
-                # ^^^^ The above input is for all other data types besides date ^^^^
-                #
-                self.sql = "UPDATE Accounts_CV SET %s=? WHERE ID=?;" % (self.chosen) # Python wildcard acceptable here as the value comes from a dict which is outside of the user's input.  No SQL injections here!
-                c.execute("SELECT EntryDate FROM Accounts_CV WHERE ID=?;", (self.chooseAccount))
-                c.execute(self.sql, (self.edited, self.chooseAccount,))
-                con.commit()
-                self.readValue()
-                break
-            break
-            
+
+        for self.k in range(len(editedFields)):
+            key = self.k
+            self.individualItems[self.k] = editedFields[self.k]
+            self.k+=1
+
+        print(self.individualItems[0][0])
+        self.individualItems[0] = re.sub('[\[\]\']','',str(self.individualItems[0]))
+        self.sqlEdit = "UPDATE Accounts_CV SET EntryDate=?, AccountName=?, Balance=?, TaxPaid=? WHERE ID=?;"
+        c.execute(self.sqlEdit, (self.individualItems[0],self.individualItems[1],self.individualItems[2],self.individualItems[3],acctID,))
+        con.commit()
+
+    def dateCheck(self, dateTime):
+        dateTime = re.sub('[\[\]\'\,]','',dateTime)
+        dateTime = dateTime.split()
+        self.editDate = ""
+        self.monthValue = True
+        for k in list(range(1,13)):
+            try:
+                if k == int(dateTime[0]) and len(list(str(dateTime[1]))) == 4 and len(dateTime) == 2:
+                    self.editDate = month_list[k]
+                    return self.editDate
+            except(ValueError):
+                continue
+        for l in list(range(1,13)):
+            if dateTime[0].upper() == month_list[l].upper():
+                self.editDate = dateTime[0]
+                return self.editDate
+        return "error"

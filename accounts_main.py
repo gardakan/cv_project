@@ -173,12 +173,59 @@ class EditFieldPrepopulate(object):
 
     def getEditedFieldValues(self):
         """Get edited values as close window"""
+        editVar = True
         for itemIndex in self.a:
             editResults = self.a[itemIndex].get("1.0",END)
             editResults = re.sub('[\\n]','',editResults)
             self.newEdits.append(editResults)
-        # Type checking here...
-        self.top4.destroy()
+            # Type checking here...
+        datecheck = db.dateCheck(self.newEdits[0])
+        self.newEdits[0] = re.sub('[\[\]\'\,]','',self.newEdits[0])
+        self.newEdits[0] = self.newEdits[0].split()
+        print(self.newEdits[0])
+        print(len(self.newEdits[0]))
+        while editVar == True:
+            if datecheck == "error":
+                tkinter.messagebox.showinfo('ValueError', 'Only integer values between 0-9 may be used in this field.  Month and year must be separated by a backslash ("/")')
+                editVar = False
+                break
+            else:
+                self.newEdits[0] = [datecheck, int(self.newEdits[0][1])]
+                print(self.newEdits[0])
+            try:
+                self.newEdits[2] = float(self.newEdits[2])
+                self.newEdits[3] = float(self.newEdits[3])
+                editVar = False
+                self.top4.destroy()
+            except(ValueError):
+                tkinter.messagebox.showinfo('ValueError: Account Balance/Tax Paid', 'Only characters 0-9 and the decimal point "." may be used in these fields.')
+                editVar = False
+                break
+        
+class GetTotal(object):
+    def __init__(self, master):
+        top5 = self.top5 = Toplevel(master)
+        self.headerFrame = Frame(top5)
+        self.headerFrame.pack(side=TOP)
+        self.instructions = Label(headerFrame, text="Get totals for Account Balance and Tax Paid.")
+        self.instructions.pack()
+        self.totFrame = Frame(top5)
+        self.totFrame.pack(side=TOP)
+        self.curChoice = Label(self.totFrame, text = "Currency to display total (pick one):")
+        self.curChoice.grid(row = 0,column = 0, sticky = E)
+        self.OPTIONS = db.currencyList
+        self.variable = StringVar(self.totFrame)
+        self.variable.set(OPTIONS[GBP])
+        self.w = apply(OptionMenu, (self.totFrame, self.variable) + tuple(self.OPTIONS))
+        self.w.grid(row=0,column=1)
+        self.buttFrame = Frame(top5)
+        self.buttFrame.pack(side=BOTTOM)
+        self.button = Button(self.buttFrame, text="Submit", command=total)
+        self.button.pack()
+
+    def total(self):
+        pass
+        
 
 class DeleteAccount(object):
     def __init__(self, master):
@@ -268,9 +315,9 @@ class mainWindow(object):
         self.delButt = Button(toolbar, text="Delete Account", command=self.deleteValue)
         delButt = self.delButt
         delButt.pack(side=LEFT, padx=2,pady = 2)
-        self.refreshButt = Button(toolbar, text="Refresh", command=self.valuesTree)
-        refreshButt = self.refreshButt
-        refreshButt.pack(side=LEFT, padx=2,pady = 2)
+        self.editButt = Button(toolbar, text="Edit Account", command=self.editEntry)
+        editButt = self.editButt
+        editButt.pack(side=LEFT, padx=2,pady = 2)
 
         toolbar.pack(side=TOP, fill=X)
 
@@ -281,25 +328,25 @@ class mainWindow(object):
         self.tree = ttk.Treeview(frame1)
 
         self.tree["columns"]=("one","two","three","four","five","six")
-        self.tree.column("one", width=100)
+        self.tree.column("one", width=120)
         self.tree.column("two", width=200)
         self.tree.column("three", width=150)
         self.tree.column("four", width=100)
         self.tree.column("five", width=100)
         self.tree.column("six", width=100)
-        self.tree.heading("one", text="Account ID")
-        self.tree.heading("two", text="Entry Date")
-        self.tree.heading("three", text="Account Name")
-        self.tree.heading("four", text="Account Balance")
-        self.tree.heading("five", text="Tax paid")
-        self.tree.heading("six", text="Default Currency")
+        self.tree.heading("one", text="Entry Date")
+        self.tree.heading("two", text="Account Name")
+        self.tree.heading("three", text="Account Balance")
+        self.tree.heading("four", text="Tax paid")
+        self.tree.heading("five", text="Default Currency")
+        self.tree.heading("six", text="")
 
         '''tree.insert("" , 0, text="Line 1", values=("1A","1B","1C","1D","1E","1F"))  # Return values for db.readValue() method here.
 
         self.id2 = tree.insert("", 1, "dir2", text="Dir 2")                      # A directory, probably won't be needed for this unless previous months are listed here...
         tree.insert(self.id2, 3, text=" sub dir 2", values=(list(range(6))))'''
 
-        self.tree.pack()
+        self.tree.pack(fill=Y)
 
         frame1.pack(side=TOP)
         self.valuesTree()
@@ -327,13 +374,15 @@ class mainWindow(object):
         self.editAccount = EditAccount(self.master)
         self.master.wait_window(self.editAccount.top3)
         self.editRes = int(self.editAccount.editedID)
+        print(self.editRes)
         self.editList = db.editEntryValues(self.editRes)
-
+        # self.editList[0] = re.sub('[\,\ ]','',', '.join(map(str, self.editList[0])))
+        print(self.editList)
         self.newEdit = EditFieldPrepopulate(self.master)
-        # self.newEdit.editField(self.editList)
         self.master.wait_window(self.newEdit.top4)
         self.finalResult = self.newEdit.newEdits
-        print(self.finalResult)
+        
+        db.editEntry(self.finalResult, self.editRes)
         a.set("Edit saved")
         self.valuesTree()
 
@@ -343,6 +392,7 @@ class mainWindow(object):
             self.row = db.readValue()
             row = self.row
             self.tree.delete(*self.tree.get_children())
+            print(row)
             for i in row:
                 self.tree.insert("" , int(i[0])-1, text=i[0], values=(i[1:6]))
             a.set("Database updated.")
