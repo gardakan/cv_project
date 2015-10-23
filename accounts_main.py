@@ -17,16 +17,6 @@ __status__ = "Development"
 # Dropdown menu - generate reports.
 # Tooltip bar - print status when executing functions (i.e. currency conversions)
 
-output1 = "test"
-output2 = "also a test but it's long"
-
-'''tkinter.messagebox.showinfo('Window Title', 'Monkeys can live up to 300 years')
-
-answer = tkinter.messagebox.askquestion('What is a thing', 'Is it not a thing that isn\'t a non-thing?')
-
-if answer == 'yes':
-    print("fwuifl gufl w7f yf7wly389gwul8902ddshi d . ... . .....")'''
-
 class EnterNewWindow(object):
     def __init__(self, master):
         """Edit window for adding new accounts to the database.  4 text fields to enter name, balance, tax paid and default currency"""
