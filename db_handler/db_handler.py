@@ -216,22 +216,22 @@ class CurrencyFunctions(object):
             return self.getCurrency()
 
     # Currency conversion method
-    def enterConvert(self, entered, converted, cValue):
+    '''def enterConvert(self, entered, converted, cValue):
         self.entered = entered
         self.converted = converted
         self.cValue = cValue
 
         self.url = ('https://currency-api.appspot.com/api/%s/%s.json') % (self.entered,self.converted)
-        print("Getting exchange rate for %s to %s from: %s." % (self.entered, self.converted, self.url))
+        # print("Getting exchange rate for %s to %s from: %s." % (self.entered, self.converted, self.url))
 
         r = requests.get(self.url)
 
-        print("Current exchange rate: ", r.json()['rate'])
-        print("Account value in %s: %f" % (self.entered, self.cValue*float(r.json()['rate'])))
+        # print("Current exchange rate: ", r.json()['rate'])
+        # print("Account value in %s: %f" % (self.entered, self.cValue*float(r.json()['rate'])))
 
         try:   # Watch for exceptions
             self.urlalt = ('http://themoneyconverter.com/%s/%s.aspx') % (self.entered,self.converted)
-            print("Secondary conversion rates from %s." % (self.urlalt))
+            # print("Secondary conversion rates from %s." % (self.urlalt))
 
             # split and strip
             self.split1 = ('>%s/%s =') % (self.converted, self.entered)
@@ -239,14 +239,14 @@ class CurrencyFunctions(object):
 
             self.ralt = requests.get(self.urlalt)
             self.d = float(self.ralt.text.split(self.split1)[1].split(self.strip1)[0].strip())
-            print("Current exchange rate: ", self.d)
+            # print("Current exchange rate: ", self.d)
 
-            print("Account value in %s: %f" % (self.entered, (self.cValue * self.d)))
+            # print("Account value in %s: %f" % (self.entered, (self.cValue * self.d)))
             return (self.cValue * self.d)
         
         except(IndexError):
-            print("Unsupported currency.  Please try again. ")
-            pass
+            # print("Unsupported currency.  Please try again. ")
+            pass'''
         
         
 
@@ -348,7 +348,7 @@ class Db(object):
     def getTotal(self, choice):
         """Check current exchange rates and convert current account balance to chosen currency, and display the total"""
 
-        self.totalCurrency = choice
+        '''self.totalCurrency = choice
         self.totalCurrency = self.totalCurrency.upper()
 
         c.execute("SELECT DefaultCurrency FROM Accounts_CV;")
@@ -374,7 +374,37 @@ class Db(object):
         except(TypeError):
             pass
         finally:
-            return sum(self.totalList), self.totalCurrency
+            return sum(self.totalList), self.totalCurrency'''
+
+        c.execute("SELECT DefaultCurrency FROM Accounts_CV;")
+        self.currencies = c.fetchall()
+        c.execute("SELECT AccountName FROM Accounts_CV;")
+        self.accountName = c.fetchall()
+        self.choice = choice
+        self.acctTotalList = []
+        self.taxTotalList = []
+        self.cValue = []
+        self.taxPaid = []
+        
+        for rowVal in c.execute("SELECT Balance FROM Accounts_CV;"):
+                self.cValue.append(float(re.sub('[\(\)\,\']','',str(rowVal))))
+
+        for rowVal in c.execute("SELECT TaxPaid FROM Accounts_CV;"):
+                self.taxPaid.append(float(re.sub('[\(\)\,\']','',str(rowVal))))
+        
+        for i in range(len(self.cValue)):
+            self.currencies[i] = re.sub('[\'\,\(\)]','',str(self.currencies[i]))
+            self.url = ('https://currency-api.appspot.com/api/%s/%s.json') % (self.currencies[i],self.choice)
+            r = requests.get(self.url)
+            self.rate = r.json()['rate']
+            print("Getting exchange rate for %s to %s from: %s." % (self.currencies[i], self.choice, self.url))
+            print("Current exchange rate: ", self.rate)
+            print("Account value for %s in %s: %f" % (self.accountName[i],self.choice, self.cValue[i]*float(self.rate)))
+            print("Tax paid value for %s in %s: %f" % (self.accountName[i],self.choice, self.taxPaid[i]*float(self.rate)))
+            self.acctTotalList.append((self.cValue[i]*float(self.rate)))
+            self.taxTotalList.append((self.taxPaid[i]*float(self.rate)))
+        
+        return (sum(self.acctTotalList),sum(self.taxTotalList),self.choice)
 
     def editEntryValues(self, z):
         c.execute("SELECT EntryDate, AccountName, Balance, TaxPaid FROM Accounts_CV WHERE ID=?;", (z,))

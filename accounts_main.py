@@ -4,6 +4,9 @@ from tkinter import *
 import tkinter.messagebox
 from tkinter import ttk
 import db_handler
+from collections import OrderedDict
+from collections import OrderedDict
+from functools import partial
 
 __author__ = "John Tamm-Buckle"
 __credits__ = "John Tamm-Buckle"
@@ -195,26 +198,201 @@ class EditFieldPrepopulate(object):
 class GetTotal(object):
     def __init__(self, master):
         top5 = self.top5 = Toplevel(master)
-        self.headerFrame = Frame(top5)
+        self.headerFrame = Frame(top5, bg="light slate grey")
         self.headerFrame.pack(side=TOP)
-        self.instructions = Label(headerFrame, text="Get totals for Account Balance and Tax Paid.")
+        self.currencyList = {"AED":"United Arab Emirates Dirham",
+            "AFN":"Afghanistan Afghani",
+            "ALL":"Albania Lek",
+            "AMD":"Armenia Dram",
+            "ANG":"Netherlands Antilles Guilder",
+            "AOA":"Angola Kwanza",
+            "ARS":"Argentina Peso",
+            "AUD":"Australia Dollar",
+            "AWG":"Aruba Guilder",
+            "AZN":"Azerbaijan New Manat",
+            "BAM":"Bosnia and Herzegovina Convertible Marka",
+            "BBD":"Barbados Dollar",
+            "BDT":"Bangladesh Taka",
+            "BGN":"Bulgaria Lev",
+            "BHD":"Bahrain Dinar",
+            "BIF":"Burundi Franc",
+            "BMD":"Bermuda Dollar",
+            "BND":"Brunei Darussalam Dollar",
+            "BOB":"Bolivia Boliviano",
+            "BRL":"Brazil Real",
+            "BSD":"Bahamas Dollar",
+            "BTN":"Bhutan Ngultrum",
+            "BWP":"Botswana Pula",
+            "BYR":"Belarus Ruble",
+            "BZD":"Belize Dollar",
+            "CAD":"Canada Dollar",
+            "CDF":"Congo/Kinshasa Franc",
+            "CHF":"Switzerland Franc",
+            "CLP":"Chile Peso",
+            "CNY":"China Yuan Renminbi",
+            "COP":"Colombia Peso",
+            "CRC":"Costa Rica Colon",
+            "CUC":"Cuba Convertible Peso",
+            "CUP":"Cuba Peso",
+            "CVE":"Cape Verde Escudo",
+            "CZK":"Czech Republic Koruna",
+            "DJF":"Djibouti Franc",
+            "DKK":"Denmark Krone",
+            "DOP":"Dominican Republic Peso",
+            "DZD":"Algeria Dinar",
+            "EGP":"Egypt Pound",
+            "ERN":"Eritrea Nakfa",
+            "ETB":"Ethiopia Birr",
+            "EUR":"Euro Member Countries",
+            "FJD":"Fiji Dollar",
+            "FKP":"Falkland Islands (Malvinas) Pound",
+            "GBP":"United Kingdom Pound",
+            "GEL":"Georgia Lari",
+            "GGP":"Guernsey Pound",
+            "GHS":"Ghana Cedi",
+            "GIP":"Gibraltar Pound",
+            "GMD":"Gambia Dalasi",
+            "GNF":"Guinea Franc",
+            "GTQ":"Guatemala Quetzal",
+            "GYD":"Guyana Dollar",
+            "HKD":"Hong Kong Dollar",
+            "HNL":"Honduras Lempira",
+            "HRK":"Croatia Kuna",
+            "HTG":"Haiti Gourde",
+            "HUF":"Hungary Forint",
+            "IDR":"Indonesia Rupiah",
+            "ILS":"Israel Shekel",
+            "IMP":"Isle of Man Pound",
+            "INR":"India Rupee",
+            "IQD":"Iraq Dinar",
+            "IRR":"Iran Rial",
+            "ISK":"Iceland Krona",
+            "JEP":"Jersey Pound",
+            "JMD":"Jamaica Dollar",
+            "JOD":"Jordan Dinar",
+            "JPY":"Japan Yen",
+            "KES":"Kenya Shilling",
+            "KGS":"Kyrgyzstan Som",
+            "KHR":"Cambodia Riel",
+            "KMF":"Comoros Franc",
+            "KPW":"Korea (North) Won",
+            "KRW":"Korea (South) Won",
+            "KWD":"Kuwait Dinar",
+            "KYD":"Cayman Islands Dollar",
+            "KZT":"Kazakhstan Tenge",
+            "LAK":"Laos Kip",
+            "LBP":"Lebanon Pound",
+            "LKR":"Sri Lanka Rupee",
+            "LRD":"Liberia Dollar",
+            "LSL":"Lesotho Loti",
+            "LYD":"Libya Dinar",
+            "MAD":"Morocco Dirham",
+            "MDL":"Moldova Leu",
+            "MGA":"Madagascar Ariary",
+            "MKD":"Macedonia Denar",
+            "MMK":"Myanmar (Burma) Kyat",
+            "MNT":"Mongolia Tughrik",
+            "MOP":"Macau Pataca",
+            "MRO":"Mauritania Ouguiya",
+            "MUR":"Mauritius Rupee",
+            "MVR":"Maldives (Maldive Islands) Rufiyaa",
+            "MWK":"Malawi Kwacha",
+            "MXN":"Mexico Peso",
+            "MYR":"Malaysia Ringgit",
+            "MZN":"Mozambique Metical",
+            "NAD":"Namibia Dollar",
+            "NGN":"Nigeria Naira",
+            "NIO":"Nicaragua Cordoba",
+            "NOK":"Norway Krone",
+            "NPR":"Nepal Rupee",
+            "NZD":"New Zealand Dollar",
+            "OMR":"Oman Rial",
+            "PAB":"Panama Balboa",
+            "PEN":"Peru Nuevo Sol",
+            "PGK":"Papua New Guinea Kina",
+            "PHP":"Philippines Peso",
+            "PKR":"Pakistan Rupee",
+            "PLN":"Poland Zloty",
+            "PYG":"Paraguay Guarani",
+            "QAR":"Qatar Riyal",
+            "RON":"Romania New Leu",
+            "RSD":"Serbia Dinar",
+            "RUB":"Russia Ruble",
+            "RWF":"Rwanda Franc",
+            "SAR":"Saudi Arabia Riyal",
+            "SBD":"Solomon Islands Dollar",
+            "SCR":"Seychelles Rupee",
+            "SDG":"Sudan Pound",
+            "SEK":"Sweden Krona",
+            "SGD":"Singapore Dollar",
+            "SHP":"Saint Helena Pound",
+            "SLL":"Sierra Leone Leone",
+            "SOS":"Somalia Shilling",
+            "SPL":"Seborga Luigino",
+            "SRD":"Suriname Dollar",
+            "STD":"Sao Tome and Principe Dobra",
+            "SVC":"El Salvador Colon",
+            "SYP":"Syria Pound",
+            "SZL":"Swaziland Lilangeni",
+            "THB":"Thailand Baht",
+            "TJS":"Tajikistan Somoni",
+            "TMT":"Turkmenistan Manat",
+            "TND":"Tunisia Dinar",
+            "TOP":"Tonga Pa'anga",
+            "TRY":"Turkey Lira",
+            "TTD":"Trinidad and Tobago Dollar",
+            "TVD":"Tuvalu Dollar",
+            "TWD":"Taiwan New Dollar",
+            "TZS":"Tanzania Shilling",
+            "UAH":"Ukraine Hryvnia",
+            "UGX":"Uganda Shilling",
+            "USD":"United States Dollar",
+            "UYU":"Uruguay Peso",
+            "UZS":"Uzbekistan Som",
+            "VEF":"Venezuela Bolivar",
+            "VND":"Viet Nam Dong",
+            "VUV":"Vanuatu Vatu",
+            "WST":"Samoa Tala",
+            "XAF":"CommunautÇ Financiäre Africaine (BEAC) CFA Franc BEAC",
+            "XCD":"East Caribbean Dollar",
+            "XDR":"International Monetary Fund (IMF) Special Drawing Rights",
+            "XOF":"CommunautÇ Financiäre Africaine (BCEAO) Franc",
+            "XPF":"Comptoirs Franáais du Pacifique (CFP) Franc",
+            "YER":"Yemen Rial",
+            "ZAR":"South Africa Rand",
+            "ZMW":"Zambia Kwacha",
+            "ZWD":"Zimbabwe Dollar"}
+        self.currencyList = OrderedDict(sorted(self.currencyList.items(), key=lambda t: t[0]))
+        self.instructions = Label(self.headerFrame, bd=1, bg="light slate grey", text="Get totals for Account Balance and Tax Paid.", relief=RAISED)
         self.instructions.pack()
         self.totFrame = Frame(top5)
         self.totFrame.pack(side=TOP)
         self.curChoice = Label(self.totFrame, text = "Currency to display total (pick one):")
         self.curChoice.grid(row = 0,column = 0, sticky = E)
-        self.OPTIONS = db.currencyList
-        self.variable = StringVar(self.totFrame)
-        self.variable.set(OPTIONS[GBP])
-        self.w = apply(OptionMenu, (self.totFrame, self.variable) + tuple(self.OPTIONS))
-        self.w.grid(row=0,column=1)
-        self.buttFrame = Frame(top5)
-        self.buttFrame.pack(side=BOTTOM)
-        self.button = Button(self.buttFrame, text="Submit", command=total)
-        self.button.pack()
+        
+        global b
+        b = StringVar()
 
-    def total(self):
-        pass
+        self.mb = Menubutton(self.totFrame, textvariable=b, relief=RAISED, width=11)
+        self.mb.grid(row = 0, column = 1)
+        self.mb.menu  =  Menu(self.mb, tearoff = 0)
+        self.mb["menu"]  =  self.mb.menu
+        b.set("Select currency")
+
+        for key in self.currencyList:
+            self.mb.menu.add_checkbutton ( label="%s, (%s)" % (key,self.currencyList[key]),variable=key, command=partial(self.total,key))   # previously command=partial(self.total,key)
+
+        # self.b3=Button(self.totFrame,text='Submit',command=self.total(b))
+        '''if b=="currencies":
+            self.b3(state=DISABLED)
+        elif b!="currencies":
+            self.b3(state="normal")
+        self.b3.grid(row=1,column=0, columnspan=width)'''
+
+    def total(self, total):
+        self.totaledCurrency = total
+        self.total1 = db.getTotal(total)
+        print(self.total1)
         
 
 class DeleteAccount(object):
@@ -293,7 +471,7 @@ class mainWindow(object):
         self.reportsMenu = Menu(menu)
         reportsMenu = self.reportsMenu
         menu.add_cascade(label="Reports", menu=reportsMenu)
-        reportsMenu.add_command(label="Generate monthly report...", command=self.doNothing)
+        reportsMenu.add_command(label="Get monthly total", command=self.getTotals)
 
         # the toolbar
         self.toolbar = Frame(root, bg="light slate grey")
@@ -350,6 +528,11 @@ class mainWindow(object):
         a.set("Entry %s succesfully added." % self.result[0])
         self.valuesTree()
 
+    def getTotals(self):
+        """Get total in chosen currency"""
+        self.getCur = GetTotal(self.master)
+        self.master.wait_window(self.getCur.top5)
+
     def deleteValue(self):
         """Delete account"""
         self.delAccount = DeleteAccount(self.master)
@@ -363,18 +546,18 @@ class mainWindow(object):
         """Edit the name, date, balance, and tax paid of an existing account"""
         self.editAccount = EditAccount(self.master)
         self.master.wait_window(self.editAccount.top3)
-        self.editRes = int(self.editAccount.editedID)
-        print(self.editRes)
-        self.editList = db.editEntryValues(self.editRes)
-        # self.editList[0] = re.sub('[\,\ ]','',', '.join(map(str, self.editList[0])))
-        print(self.editList)
-        self.newEdit = EditFieldPrepopulate(self.master)
-        self.master.wait_window(self.newEdit.top4)
-        self.finalResult = self.newEdit.newEdits
-        
-        db.editEntry(self.finalResult, self.editRes)
-        a.set("Edit saved")
-        self.valuesTree()
+        try:
+            self.editRes = int(self.editAccount.editedID)
+            self.editList = db.editEntryValues(self.editRes)
+            # self.editList[0] = re.sub('[\,\ ]','',', '.join(map(str, self.editList[0])))
+            self.newEdit = EditFieldPrepopulate(self.master)
+            self.master.wait_window(self.newEdit.top4)
+            self.finalResult = self.newEdit.newEdits
+            db.editEntry(self.finalResult, self.editRes)
+            a.set("Edit saved")
+            self.valuesTree()
+        except(AttributeError):
+            pass
 
     def valuesTree(self):
         """Display current database"""
@@ -413,6 +596,7 @@ class mainWindow(object):
 
 root = Tk()
 db = db_handler.Db()
+CFunc = db_handler.CurrencyFunctions()
 a = StringVar()
 m = mainWindow(root)
 root.mainloop()
