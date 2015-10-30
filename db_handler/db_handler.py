@@ -259,8 +259,6 @@ class Db(object):
         self.con = con
         self.c = c
         self.createTable()
-        
-        pass
 
     # Create the tables if they don't already exist.
     def createTable(self):
@@ -268,8 +266,14 @@ class Db(object):
             c.execute("CREATE TABLE Accounts_CV(ID INTEGER PRIMARY KEY NOT NULL, EntryDate TEXT, AccountName TEXT, Balance REAL, TaxPaid REAL, DefaultCurrency TEXT, Total REAL DEFAULT NULL);")
         except(lite.Error):
             pass                # Ignore table creation if it already exists.  Another (better) way might be to check if the table exists, if not, then create it.  But this works.
-        c.execute("CREATE TABLE IF NOT EXISTS Currency(ID INTEGER, Currency TEXT);") # This works better, and is apparently the proper way to do things.  This table will be referenced for currency conversions.
-        # c.execute("CREATE TABLE IF NOT EXISTS DateTime(ID INTEGER, EntryDate TEXT, Balance REAL);")
+        c.execute("CREATE TABLE IF NOT EXISTS Totals(EntryDate TEXT, BalanceTotal REAL, TaxTotal REAL, Currency TEXT);") # This works better, and is apparently the proper way to do things.  This table will be referenced for currency conversions.
+
+    # Display account balance totals
+    def displayTotals(self, entryDate, aBalance, tBalance, currency):
+        c.execute("DELETE FROM Totals;")
+        c.execute("INSERT INTO Totals VALUES(?, ?, ?, ?);", (entryDate, float(aBalance), float(tBalance), currency))        # Possibility of multiple totals.
+        c.commit()
+        # return "done"
 
     # Iterates over the Accounts_CV table and outputs all account info
     def readValue(self):

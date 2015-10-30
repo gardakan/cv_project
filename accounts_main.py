@@ -198,7 +198,7 @@ class EditFieldPrepopulate(object):
 class GetTotal(object):
     def __init__(self, master):
         top5 = self.top5 = Toplevel(master)
-        self.headerFrame = Frame(top5, bg="light slate grey")
+        self.headerFrame = Frame(top5)
         self.headerFrame.pack(side=TOP)
         self.currencyList = {"AED":"United Arab Emirates Dirham",
             "AFN":"Afghanistan Afghani",
@@ -363,7 +363,7 @@ class GetTotal(object):
             "ZMW":"Zambia Kwacha",
             "ZWD":"Zimbabwe Dollar"}
         self.currencyList = OrderedDict(sorted(self.currencyList.items(), key=lambda t: t[0]))
-        self.instructions = Label(self.headerFrame, bd=1, bg="light slate grey", text="Get totals for Account Balance and Tax Paid.", relief=RAISED)
+        self.instructions = Label(self.headerFrame, bd=1, text="Get totals for Account Balance and Tax Paid.", relief=RAISED)
         self.instructions.pack()
         self.totFrame = Frame(top5)
         self.totFrame.pack(side=TOP)
@@ -380,19 +380,25 @@ class GetTotal(object):
         b.set("Select currency")
 
         for key in self.currencyList:
-            self.mb.menu.add_checkbutton ( label="%s, (%s)" % (key,self.currencyList[key]),variable=key, command=partial(self.total,key))   # previously command=partial(self.total,key)
+            self.mb.menu.add_checkbutton ( label="%s, (%s)" % (key,self.currencyList[key]),variable=key, command=partial(self.setValue,key))   # previously command=partial(self.total,key)
 
-        # self.b3=Button(self.totFrame,text='Submit',command=self.total(b))
-        '''if b=="currencies":
+        self.menuChoice = b
+        self.b3=Button(self.totFrame,text='Submit',command=lambda: self.total(self.menuChoice))
+        '''if b=="Select currency":
             self.b3(state=DISABLED)
         elif b!="currencies":
-            self.b3(state="normal")
-        self.b3.grid(row=1,column=0, columnspan=width)'''
+            self.b3(state="normal")'''
+        self.b3.grid(row=1,column=0, columnspan=2)
+
+    def setValue(self, key):
+        self.menuChoice = key
+        b.set(self.menuChoice)
 
     def total(self, total):
         self.totaledCurrency = total
         self.total1 = db.getTotal(total)
         print(self.total1)
+        self.top5.destroy()
         
 
 class DeleteAccount(object):
@@ -460,7 +466,6 @@ class mainWindow(object):
         subMenu.add_command(label="Add New...", command=self.enterNew)
         subMenu.add_command(label="Delete Account", command=self.deleteValue)
         subMenu.add_separator()
-        subMenu.add_command(label="Arse about on the internet...", command=self.doNothing)
         subMenu.add_command(label="Quit", command=self.quitProgram)
 
         self.editMenu = Menu(menu)
@@ -571,10 +576,6 @@ class mainWindow(object):
             a.set("Database updated.")
         except(TypeError):
             a.set("Database is empty.")
-
-    def getTotal(self):
-        """Get account and taxes paid total in pre-determined currency"""
-        pass
 
     def doNothing(self):
         """Test function which doesn't do anything useful"""
